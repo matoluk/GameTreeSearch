@@ -1,3 +1,5 @@
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.*;
 
 public class EngineMCTS implements Engine{
@@ -8,18 +10,20 @@ public class EngineMCTS implements Engine{
         this.simulate = simulate;
     }
     @Override
-    public Position choseMove(Position position, long timeMs) {
+    public Position choseMove(Position position, long deadline) {
         Node root = new Node(null, position);
-        long timeOut = System.currentTimeMillis() + timeMs - 2; //2
-
-        while (System.currentTimeMillis() < timeOut) {
+        ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+        int count = 0;
+        while (bean.getCurrentThreadCpuTime() < deadline) {
             Node node = selectNode(root);
             switch (node.position.state()) {
-                case WIN -> backPropagate(node, 1);
+                case WIN -> backPropagate(node, 1);  //TODO -upgrade- remove parent node
                 case DRAW -> backPropagate(node, 0);
                 case ONGOING -> backPropagate(node, (int) simulate.eval(node.position));
             }
+            count++;
         }
+        System.out.println("Simulations: " + count);
         return root.getBestMove();
     }
 

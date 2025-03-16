@@ -154,4 +154,27 @@ public class PositionGomoku implements Position{
     public GameState state() {
         return state;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof PositionGomoku o))
+            return false;
+        if (size != o.size)
+            return false;
+        for (int i = 0; i < size; i++)
+            if (board[i] != o.board[i])
+                return false;
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (Move move = new Move(); move != null; move = move.next()) {
+            stringBuilder.append(List.of("  ", "><", "()").get(get(move)));
+            if (move.y == size - 1)
+                stringBuilder.append("\n");
+        }
+        return stringBuilder.toString();
+    }
 }
