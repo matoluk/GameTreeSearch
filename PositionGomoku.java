@@ -7,11 +7,11 @@ public class PositionGomoku implements Position{
     private final int size;
     private final int[] board;
     private int plOnTurn = 1;
-    List<Move> possibleMoves;
+    private List<Move> possibleMoves;
     private final Stack<Move> moveStack = new Stack<>();
-    final Stack<Integer> childOrdStack = new Stack<>();
+    private final Stack<Integer> childOrdStack = new Stack<>();
     private GameState state = GameState.ONGOING;
-    private class Move {
+    static class Move {
         int x = 0;
         int y = 0;
         Move() {}
@@ -23,7 +23,7 @@ public class PositionGomoku implements Position{
             x = m1.x + mul * m2.x;
             y = m1.y + mul * m2.y;
         }
-        Move next(){
+        Move next(int size){
             if (x == size - 1 && y == size - 1)
                 return null;
             return new Move(y == size - 1 ? x + 1 : x, (y + 1) % size);
@@ -32,10 +32,10 @@ public class PositionGomoku implements Position{
             x += move.x;
             y += move.y;
         }
-        boolean equals(Move move) {
-            return x == move.x && y == move.y;
+        boolean notEquals(Move move) {
+            return x != move.x || y != move.y;
         }
-        boolean isValid() {
+        boolean isValid(int size) {
             return x >= 0 && y >= 0 && x < size && y < size;
         }
     }
@@ -46,22 +46,14 @@ public class PositionGomoku implements Position{
         findPossibleMoves();
         childOrdStack.push(0);
     }
-    PositionGomoku(PositionGomoku pos) {
-        // not copy Stacks
-        size = pos.size;
-        board = Arrays.copyOf(pos.board, size);
-        plOnTurn = pos.plOnTurn;
-        possibleMoves = new ArrayList<>(pos.possibleMoves);
-        state = pos.state;
-    }
     PositionGomoku(PositionGomoku pos, int moveId) {
         assert pos.possibleMoves != null && pos.possibleMoves.size() > moveId && moveId >= 0;
-        moveStack.push(pos.possibleMoves.get(moveId));
-        assert pos.get(moveStack.peek()) == 0;
+        Move lastMove = pos.possibleMoves.get(moveId);
+        assert pos.get(lastMove) == 0;
 
         size = pos.size;
         board = Arrays.copyOf(pos.board, size);
-        set(moveStack.peek(), pos.plOnTurn);
+        set(lastMove, pos.plOnTurn);
         plOnTurn = 3 - pos.plOnTurn;
 
         int newSize = pos.possibleMoves.size() - 1;
@@ -69,43 +61,69 @@ public class PositionGomoku implements Position{
         possibleMoves.set(moveId, possibleMoves.get(newSize));
         possibleMoves.remove(newSize);
 
+        moveStack.push(lastMove);
         childOrdStack.push(0);
-        checkGameState();
+        state = computeState(this, lastMove);
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public int[] getBoard() {
+        return Arrays.copyOf(board, size);
+    }
+
+    public int getPlOnTurn() {
+        return plOnTurn;
+    }
+
+    public List<Move> getPossibleMoves() {
+        return new ArrayList<>(possibleMoves);
     }
 
     private int get(Move move) {
         return ((board[move.x] >> (move.y * 2)) & 3);
     }
+    static int get(int[] board, Move move) {
+        return ((board[move.x] >> (move.y * 2)) & 3);
+    }
     private void set(Move move, int pl) {
+        board[move.x] |= (pl << (move.y * 2));
+    }
+    static void set(int[] board, Move move, int pl) {
         board[move.x] |= (pl << (move.y * 2));
     }
     private void findPossibleMoves() {
         possibleMoves = new ArrayList<>();
-        for (Move move = new Move(); move != null; move = move.next())
+        for (Move move = new Move(); move != null; move = move.next(size))
             if (get(move) == 0)
                 possibleMoves.add(move);
     }
-    private void checkGameState() {
-        Move move = moveStack.peek();
-        int lastPl = 3 - plOnTurn;
+    static boolean gameWin(int size, int[] board, Move lastMove) {
+        int lastPl = PositionGomoku.get(board, lastMove);
         for (Move dir : List.of(new Move(1,0), new Move(0,1), new Move(1,1), new Move(1,-1))) {
             int count = 0;
-            Move end = new Move(move, 5, dir);
-            for (Move pos = new Move(move, -4, dir); !pos.equals(end); pos.add(dir)) {
-                if (pos.isValid()) {
-                    if (get(pos) == lastPl)
+            Move end = new Move(lastMove, 5, dir);
+            for (Move square = new Move(lastMove, -4, dir); square.notEquals(end); square.add(dir)) {
+                if (square.isValid(size)) {
+                    if (PositionGomoku.get(board, square) == lastPl)
                         count++;
                     else
                         count = 0;
-                    if (count >= 5) {
-                        state = GameState.WIN;
-                        return;
-                    }
+                    if (count >= 5)
+                        return true;
                 }
             }
         }
-        if (possibleMoves.isEmpty())
-            state = GameState.DRAW;
+        return false;
+    }
+    static GameState computeState(PositionGomoku position, Move lastMove) {
+        if (gameWin(position.size, position.board, lastMove))
+            return GameState.WIN;
+        if (position.possibleMoves.isEmpty())
+            return GameState.DRAW;
+        return GameState.ONGOING;
     }
     @Override
     public List<Position> getChildren() {
@@ -131,7 +149,7 @@ public class PositionGomoku implements Position{
         moveStack.push(move);
         childOrdStack.push(0);
 
-        checkGameState();
+        state = computeState(this, move);
         return true;
     }
 
@@ -170,7 +188,7 @@ public class PositionGomoku implements Position{
     @Override
     public String toString() {
         StringBuilder stringBuilder = new StringBuilder();
-        for (Move move = new Move(); move != null; move = move.next()) {
+        for (Move move = new Move(); move != null; move = move.next(size)) {
             stringBuilder.append(List.of("  ", "><", "()").get(get(move)));
             if (move.y == size - 1)
                 stringBuilder.append("\n");
