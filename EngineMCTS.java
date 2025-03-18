@@ -19,7 +19,7 @@ public class EngineMCTS implements Engine{
             switch (node.position.state()) {
                 case WIN -> backPropagate(node, 1);  //TODO -upgrade- remove parent node
                 case DRAW -> backPropagate(node, 0);
-                case ONGOING -> backPropagate(node, (int) simulate.eval(node.position));
+                case ONGOING -> backPropagate(node, simulate.eval(node.position));
             }
             count++;
         }
@@ -38,7 +38,7 @@ public class EngineMCTS implements Engine{
         return node;
     }
 
-    private void backPropagate(Node node, int result) {
+    private void backPropagate(Node node, double result) {
         while (node != null) {
             node.visits++;
             node.wins += result;
@@ -49,7 +49,7 @@ public class EngineMCTS implements Engine{
     private static class Node {
         Node parent;
         Position position;
-        int wins = 0;
+        double wins = 0;
         int visits = 0;
         List<Node> children = new ArrayList<>();
 
@@ -66,14 +66,14 @@ public class EngineMCTS implements Engine{
 
         Node selectBestChild() {
             return children.stream()
-                    .max(Comparator.comparingDouble(n -> (double) n.wins / (n.visits + 1) +
+                    .max(Comparator.comparingDouble(n -> n.wins / (n.visits + 1) +
                             EXPLORATION_PARAM * Math.sqrt(Math.log(visits + 1) / (n.visits + 1))))
                     .orElse(children.get(rand.nextInt(children.size())));
         }
 
         Position getBestMove() {
             return children.stream()
-                    .max(Comparator.comparingDouble(n -> (double) n.wins / (n.visits + 1)))
+                    .max(Comparator.comparingDouble(n -> n.wins / (n.visits + 1)))
                     .map(n -> n.position)
                     .orElse(children.get(rand.nextInt(children.size())).position);
         }

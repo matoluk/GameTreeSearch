@@ -89,10 +89,10 @@ public class PositionGomoku implements Position{
         return ((board[move.x] >> (move.y * 2)) & 3);
     }
     private void set(Move move, int pl) {
-        board[move.x] |= (pl << (move.y * 2));
+        board[move.x] = (board[move.x] & ~(3 << (move.y * 2))) | (pl << (move.y * 2));
     }
     static void set(int[] board, Move move, int pl) {
-        board[move.x] |= (pl << (move.y * 2));
+        board[move.x] = (board[move.x] & ~(3 << (move.y * 2))) | (pl << (move.y * 2));
     }
     private void findPossibleMoves() {
         possibleMoves = new ArrayList<>();
@@ -161,8 +161,12 @@ public class PositionGomoku implements Position{
         set(move, 0);
         plOnTurn = 3 - plOnTurn;
 
-        possibleMoves.add(possibleMoves.get(childOrd));
-        possibleMoves.set(childOrd, move);
+        if (childOrd == possibleMoves.size())
+            possibleMoves.add(move);
+        else {
+            possibleMoves.add(possibleMoves.get(childOrd));
+            possibleMoves.set(childOrd, move);
+        }
         childOrdStack.push(childOrd + 1);
 
         state = GameState.ONGOING;
@@ -187,12 +191,27 @@ public class PositionGomoku implements Position{
 
     @Override
     public String toString() {
-        StringBuilder stringBuilder = new StringBuilder();
+        StringBuilder line = new StringBuilder("│\n├───");
+        for (int i = 1; i < size; i++)
+            line.append("┼───");
+        line.append("┤\n");
+
+        StringBuilder stringBuilder = new StringBuilder("┌───");
+        for (int i = 1; i < size; i++)
+            stringBuilder.append("┬───");
+        stringBuilder.append("┐\n");
+
         for (Move move = new Move(); move != null; move = move.next(size)) {
-            stringBuilder.append(List.of("  ", "><", "()").get(get(move)));
-            if (move.y == size - 1)
-                stringBuilder.append("\n");
+            stringBuilder.append("│");
+            stringBuilder.append(List.of("   ", " X ", " O ", "Err").get(get(move)));
+            if (move.y == size - 1 && move.x < size - 1)
+                stringBuilder.append(line);
         }
+
+        stringBuilder.append("│\n└───");
+        for (int i = 1; i < size; i++)
+            stringBuilder.append("┴───");
+        stringBuilder.append("┘\n");
         return stringBuilder.toString();
     }
 }
