@@ -6,8 +6,8 @@ import java.util.Stack;
 public class PositionGomoku implements Position{
     private final int size;
     private final int[] board;
-    private int plOnTurn = 1;
-    private List<Move> possibleMoves;
+    protected int plOnTurn = 1;
+    protected List<Move> possibleMoves;
     private final Stack<Move> moveStack = new Stack<>();
     private final Stack<Integer> childOrdStack = new Stack<>();
     private GameState state = GameState.ONGOING;
@@ -32,11 +32,23 @@ public class PositionGomoku implements Position{
             x += move.x;
             y += move.y;
         }
-        boolean notEquals(Move move) {
-            return x != move.x || y != move.y;
-        }
         boolean isValid(int size) {
             return x >= 0 && y >= 0 && x < size && y < size;
+        }
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof Move m))
+                return false;
+            return x == m.x && y == m.y;
+        }
+        @Override
+        public int hashCode() {
+            return Integer.hashCode(x) * 31 + Integer.hashCode(y);
+        }
+
+        @Override
+        public String toString() {
+            return "[" + x + "," + y + "]";
         }
     }
 
@@ -46,24 +58,16 @@ public class PositionGomoku implements Position{
         findPossibleMoves();
         childOrdStack.push(0);
     }
-    PositionGomoku(PositionGomoku pos, int moveId) {
-        assert pos.possibleMoves != null && pos.possibleMoves.size() > moveId && moveId >= 0;
-        Move lastMove = pos.possibleMoves.get(moveId);
-        assert pos.get(lastMove) == 0;
-
+    public PositionGomoku(PositionGomoku pos) {
         size = pos.size;
         board = Arrays.copyOf(pos.board, size);
-        set(lastMove, pos.plOnTurn);
-        plOnTurn = 3 - pos.plOnTurn;
-
-        int newSize = pos.possibleMoves.size() - 1;
+        plOnTurn = pos.plOnTurn;
         possibleMoves = new ArrayList<>(pos.possibleMoves);
-        possibleMoves.set(moveId, possibleMoves.get(newSize));
-        possibleMoves.remove(newSize);
-
-        moveStack.push(lastMove);
+        state = pos.state;
         childOrdStack.push(0);
-        state = computeState(this, lastMove);
+    }
+    protected PositionGomoku copy(){
+        return new PositionGomoku(this);
     }
 
     public int getSize() {
@@ -82,19 +86,19 @@ public class PositionGomoku implements Position{
         return new ArrayList<>(possibleMoves);
     }
 
-    private int get(Move move) {
+    protected int get(Move move) {
         return ((board[move.x] >> (move.y * 2)) & 3);
     }
     static int get(int[] board, Move move) {
         return ((board[move.x] >> (move.y * 2)) & 3);
     }
-    private void set(Move move, int pl) {
+    protected void set(Move move, int pl) {
         board[move.x] = (board[move.x] & ~(3 << (move.y * 2))) | (pl << (move.y * 2));
     }
     static void set(int[] board, Move move, int pl) {
         board[move.x] = (board[move.x] & ~(3 << (move.y * 2))) | (pl << (move.y * 2));
     }
-    private void findPossibleMoves() {
+    protected void findPossibleMoves() {
         possibleMoves = new ArrayList<>();
         for (Move move = new Move(); move != null; move = move.next(size))
             if (get(move) == 0)
@@ -105,7 +109,7 @@ public class PositionGomoku implements Position{
         for (Move dir : List.of(new Move(1,0), new Move(0,1), new Move(1,1), new Move(1,-1))) {
             int count = 0;
             Move end = new Move(lastMove, 5, dir);
-            for (Move square = new Move(lastMove, -4, dir); square.notEquals(end); square.add(dir)) {
+            for (Move square = new Move(lastMove, -4, dir); !square.equals(end); square.add(dir)) {
                 if (square.isValid(size)) {
                     if (PositionGomoku.get(board, square) == lastPl)
                         count++;
@@ -118,18 +122,35 @@ public class PositionGomoku implements Position{
         }
         return false;
     }
-    static GameState computeState(PositionGomoku position, Move lastMove) {
-        if (gameWin(position.size, position.board, lastMove))
-            return GameState.WIN;
-        if (position.possibleMoves.isEmpty())
-            return GameState.DRAW;
-        return GameState.ONGOING;
+    protected void updateStacks(int moveId) {
+        moveStack.push(possibleMoves.get(moveId));
+        childOrdStack.push(0);
+    }
+    protected void updatePossibleMoves(int moveId) {
+        int newSize = possibleMoves.size() - 1;
+        possibleMoves.set(moveId, possibleMoves.get(newSize));
+        possibleMoves.remove(newSize);
+    }
+    private void move(int moveId) {
+        Move move = possibleMoves.get(moveId);
+        assert get(move) == 0;
+        set(move, plOnTurn);
+        plOnTurn = 3 - plOnTurn;
+        updatePossibleMoves(moveId);
+
+        if (gameWin(size, board, move))
+            state = GameState.WIN;
+        else if (possibleMoves.isEmpty())
+            state = GameState.DRAW;
     }
     @Override
     public List<Position> getChildren() {
         List<Position> children = new ArrayList<>(possibleMoves.size());
-        for (int i = 0; i < possibleMoves.size(); i++)
-            children.add(new PositionGomoku(this, i));
+        for (int i = 0; i < possibleMoves.size(); i++) {
+            PositionGomoku child = copy();
+            child.move(i);
+            children.add(child);
+        }
         return children;
     }
 
@@ -138,18 +159,8 @@ public class PositionGomoku implements Position{
         int childOrd = childOrdStack.peek();
         if (childOrd >= possibleMoves.size())
             return false;
-
-        Move move = possibleMoves.get(childOrd);
-        set(move, plOnTurn);
-        plOnTurn = 3 - plOnTurn;
-
-        int newSize = possibleMoves.size() - 1;
-        possibleMoves.set(childOrd, possibleMoves.get(newSize));
-        possibleMoves.remove(newSize);
-        moveStack.push(move);
-        childOrdStack.push(0);
-
-        state = computeState(this, move);
+        updateStacks(childOrd);
+        move(childOrd);
         return true;
     }
 
@@ -179,9 +190,7 @@ public class PositionGomoku implements Position{
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof PositionGomoku o))
-            return false;
-        if (size != o.size)
+        if (!(obj instanceof PositionGomoku o) || size != o.size || plOnTurn != o.plOnTurn)
             return false;
         for (int i = 0; i < size; i++)
             if (board[i] != o.board[i])
@@ -192,13 +201,11 @@ public class PositionGomoku implements Position{
     @Override
     public String toString() {
         StringBuilder line = new StringBuilder("│\n├───");
-        for (int i = 1; i < size; i++)
-            line.append("┼───");
+        line.append("┼───".repeat(size - 1));
         line.append("┤\n");
 
         StringBuilder stringBuilder = new StringBuilder("┌───");
-        for (int i = 1; i < size; i++)
-            stringBuilder.append("┬───");
+        stringBuilder.append("┬───".repeat(size - 1));
         stringBuilder.append("┐\n");
 
         for (Move move = new Move(); move != null; move = move.next(size)) {
@@ -209,8 +216,7 @@ public class PositionGomoku implements Position{
         }
 
         stringBuilder.append("│\n└───");
-        for (int i = 1; i < size; i++)
-            stringBuilder.append("┴───");
+        stringBuilder.append("┴───".repeat(size - 1));
         stringBuilder.append("┘\n");
         return stringBuilder.toString();
     }
