@@ -21,7 +21,7 @@ public class HeuristicGomoku implements PositionEvaluator{
             throw new IllegalArgumentException();
 
         int[] points = {0, 0};
-        List<Line> lines = getLines(pos.getBoard(), pos.getSize());
+        List<Line> lines = getLines(pos.board, pos.size);
         for (Line line : lines) {
             if (line.value == 0)
                 continue;
@@ -88,7 +88,7 @@ public class HeuristicGomoku implements PositionEvaluator{
             }
         }
 
-        int pl = 3 - pos.getPlOnTurn();
+        int pl = 3 - pos.actualPlayer();
         return (points[pl - 1] - points[2 - pl]) / (points[pl - 1] + points[2 - pl] + 1.0);
     }
     private static class Line {

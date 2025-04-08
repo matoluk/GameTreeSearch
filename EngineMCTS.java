@@ -10,8 +10,8 @@ public class EngineMCTS implements Engine{
         this.simulate = simulate;
     }
     @Override
-    public Position choseMove(Position position, long deadline) {
-        Node root = new Node(null, position);
+    public Object choseMove(Position position, long deadline) {
+        Node root = new Node(null, position, null);
         ThreadMXBean bean = ManagementFactory.getThreadMXBean();
         int count = 0;
         while (bean.getCurrentThreadCpuTime() < deadline) {
@@ -48,20 +48,22 @@ public class EngineMCTS implements Engine{
     }
     private static class Node {
         Node parent;
-        Position position;
+        Position position; //TODO remove;
+        Object move;
         double wins = 0;
         int visits = 0;
         List<Node> children = new ArrayList<>();
 
-        Node(Node parent, Position position) {
+        Node(Node parent, Position position, Object move) {
             this.parent = parent;
             this.position = position;
+            this.move = move;
         }
 
         void expand() {
             if (position.state() == GameState.ONGOING)
-                for (Position child : position.getChildren())
-                    children.add(new Node(this, child));
+                for (Object move : position.moves())
+                    children.add(new Node(this, position.copy().applyMove(move), move));
         }
 
         Node selectBestChild() {
@@ -71,11 +73,11 @@ public class EngineMCTS implements Engine{
                     .orElse(children.get(rand.nextInt(children.size())));
         }
 
-        Position getBestMove() {
+        Object getBestMove() {
             return children.stream()
                     .max(Comparator.comparingDouble(n -> n.wins / (n.visits + 1)))
-                    .map(n -> n.position)
-                    .orElse(children.get(rand.nextInt(children.size())).position);
+                    .map(n -> n.move)
+                    .orElse(children.get(rand.nextInt(children.size())).move);
         }
     }
 }

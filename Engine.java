@@ -1,3 +1,3 @@
 public interface Engine {
-    Position choseMove(Position position, long deadlineNano);
+    Object choseMove(Position position, long deadlineNano);
 }

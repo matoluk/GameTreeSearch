@@ -14,18 +14,22 @@ public class EngineAB implements Engine{
         this.heuristic = heuristic;
     }
     @Override
-    public Position choseMove(Position position, long deadline) {
+    public Object choseMove(Position position, long deadline) {
         this.deadline = deadline;
-        Position bestMove = null;
+        List<Object> moves = position.moves();
+        Object bestMove = null;
 
         for(int deep = 1; true; deep++) {
             System.out.println("Deep: "+deep);
             searchedFullTree = true;
             double alpha = -1;
-            List<Position> bestMoves = new ArrayList<>();
-            for (Position move : position.getChildren()) {
+            List<Object> bestMoves = new ArrayList<>();
+            for (Object move : moves) {
                 try {
-                    double value = -abSearch(move, deep - 1, -1, -alpha);
+                    position.applyMove(move);
+                    double value = -abSearch(position, deep - 1, -1, -alpha);
+                    //TODO - if(value==-1) remove move;  if forced move then return;  if no move ...
+                    position.revertMove(move);
                     if (value == 1)
                         return move;
                     if (value > alpha) {
@@ -57,9 +61,10 @@ public class EngineAB implements Engine{
         }
 
         double maxValue = -1;
-        while (position.advanceToNext()) {
+        for (Object move : position.moves()) {
+            position.applyMove(move);
             double value = -abSearch(position, deep - 1, -beta, -alpha);
-            position.revertToParent();
+            position.revertMove(move);
 
             if (value > maxValue) {
                 maxValue = value;

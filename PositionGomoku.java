@@ -1,16 +1,12 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Stack;
 
-public class PositionGomoku implements Position{
-    private final int size;
-    private final int[] board;
-    protected int plOnTurn = 1;
-    protected List<Move> possibleMoves;
-    private final Stack<Move> moveStack = new Stack<>();
-    private final Stack<Integer> childOrdStack = new Stack<>();
-    private GameState state = GameState.ONGOING;
+public class PositionGomoku implements Position {
+    final int size;
+    final int[] board;
+    int deep;
+    GameState state;
     static class Move {
         int x = 0;
         int y = 0;
@@ -51,173 +47,135 @@ public class PositionGomoku implements Position{
             return "[" + x + "," + y + "]";
         }
     }
-
     PositionGomoku(int size) {
         this.size = size;
         board = new int[this.size];
-        findPossibleMoves();
-        childOrdStack.push(0);
+        deep = 0;
+        state = GameState.ONGOING;
     }
-    public PositionGomoku(PositionGomoku pos) {
+    PositionGomoku(PositionGomoku pos) {
         size = pos.size;
         board = Arrays.copyOf(pos.board, size);
-        plOnTurn = pos.plOnTurn;
-        possibleMoves = new ArrayList<>(pos.possibleMoves);
+        deep = pos.deep;
         state = pos.state;
-        childOrdStack.push(0);
     }
-    protected PositionGomoku copy(){
+
+    @Override
+    public Position copy() {
         return new PositionGomoku(this);
     }
 
-    public int getSize() {
-        return size;
-    }
-
-    public int[] getBoard() {
-        return Arrays.copyOf(board, size);
-    }
-
-    public int getPlOnTurn() {
-        return plOnTurn;
-    }
-
-    public List<Move> getPossibleMoves() {
-        return new ArrayList<>(possibleMoves);
-    }
-
-    protected int get(Move move) {
+    int get(Move move) {
         return ((board[move.x] >> (move.y * 2)) & 3);
     }
     static int get(int[] board, Move move) {
         return ((board[move.x] >> (move.y * 2)) & 3);
     }
-    protected void set(Move move, int pl) {
+    void set(Move move, int pl) {
         board[move.x] = (board[move.x] & ~(3 << (move.y * 2))) | (pl << (move.y * 2));
     }
     static void set(int[] board, Move move, int pl) {
         board[move.x] = (board[move.x] & ~(3 << (move.y * 2))) | (pl << (move.y * 2));
     }
-    protected void findPossibleMoves() {
-        possibleMoves = new ArrayList<>();
+    int actualPlayer() {
+        return (deep & 1) + 1;
+    }
+    @Override
+    public List<Object> moves() {
+        List<Object> moves = new ArrayList<>();
         for (Move move = new Move(); move != null; move = move.next(size))
             if (get(move) == 0)
-                possibleMoves.add(move);
-    }
-    static boolean gameWin(int size, int[] board, Move lastMove) {
-        int lastPl = PositionGomoku.get(board, lastMove);
-        for (Move dir : List.of(new Move(1,0), new Move(0,1), new Move(1,1), new Move(1,-1))) {
-            int count = 0;
-            Move end = new Move(lastMove, 5, dir);
-            for (Move square = new Move(lastMove, -4, dir); !square.equals(end); square.add(dir)) {
-                if (square.isValid(size)) {
-                    if (PositionGomoku.get(board, square) == lastPl)
-                        count++;
-                    else
-                        count = 0;
-                    if (count >= 5)
-                        return true;
-                }
-            }
-        }
-        return false;
-    }
-    protected void updateStacks(int moveId) {
-        moveStack.push(possibleMoves.get(moveId));
-        childOrdStack.push(0);
-    }
-    protected void updatePossibleMoves(int moveId) {
-        int newSize = possibleMoves.size() - 1;
-        possibleMoves.set(moveId, possibleMoves.get(newSize));
-        possibleMoves.remove(newSize);
-    }
-    private void move(int moveId) {
-        Move move = possibleMoves.get(moveId);
-        assert get(move) == 0;
-        set(move, plOnTurn);
-        plOnTurn = 3 - plOnTurn;
-        updatePossibleMoves(moveId);
-
-        if (gameWin(size, board, move))
-            state = GameState.WIN;
-        else if (possibleMoves.isEmpty())
-            state = GameState.DRAW;
-    }
-    @Override
-    public List<Position> getChildren() {
-        List<Position> children = new ArrayList<>(possibleMoves.size());
-        for (int i = 0; i < possibleMoves.size(); i++) {
-            PositionGomoku child = copy();
-            child.move(i);
-            children.add(child);
-        }
-        return children;
-    }
-
-    @Override
-    public boolean advanceToNext() {
-        int childOrd = childOrdStack.peek();
-        if (childOrd >= possibleMoves.size())
-            return false;
-        updateStacks(childOrd);
-        move(childOrd);
-        return true;
-    }
-
-    @Override
-    public void revertToParent() {
-        childOrdStack.pop();
-        int childOrd = childOrdStack.pop();
-        Move move = moveStack.pop();
-        set(move, 0);
-        plOnTurn = 3 - plOnTurn;
-
-        if (childOrd == possibleMoves.size())
-            possibleMoves.add(move);
-        else {
-            possibleMoves.add(possibleMoves.get(childOrd));
-            possibleMoves.set(childOrd, move);
-        }
-        childOrdStack.push(childOrd + 1);
-
-        state = GameState.ONGOING;
+                moves.add(move);
+        return moves;
     }
 
     @Override
     public GameState state() {
         return state;
     }
+    private GameState move(Move move) {
+        if (get(move) != 0)
+            throw new RuntimeException("Square " + move + " is not free.");
 
+        int player = actualPlayer();
+        set(move, player);
+        deep++;
+
+        for (Move dir : List.of(new Move(1,0), new Move(0,1), new Move(1,1), new Move(1,-1))) {
+            int count = 0;
+            Move end = new Move(move, 5, dir);
+            for (Move square = new Move(move, -4, dir); !square.equals(end); square.add(dir)) {
+                if (square.isValid(size)) {
+                    if (get(square) == player)
+                        count++;
+                    else
+                        count = 0;
+                    if (count >= 5)
+                        return GameState.WIN;
+                }
+            }
+        }
+        if (deep >= size * size)
+            return GameState.DRAW;
+        return GameState.ONGOING;
+    }
     @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof PositionGomoku o) || size != o.size || plOnTurn != o.plOnTurn)
-            return false;
-        for (int i = 0; i < size; i++)
-            if (board[i] != o.board[i])
-                return false;
-        return true;
+    public Position applyMove(Object move) {
+        if (!(move instanceof Move m))
+            throw new IllegalArgumentException("Expected gomoku.Move");
+        state = move(m);
+        return this;
     }
 
     @Override
-    public String toString() {
-        StringBuilder line = new StringBuilder("│\n├───");
-        line.append("┼───".repeat(size - 1));
-        line.append("┤\n");
+    public void revertMove(Object move) {
+        if (!(move instanceof Move m))
+            throw new IllegalArgumentException("Expected gomoku.Move");
+        set(m, 0);
+        state = GameState.ONGOING;
+        deep--;
+    }
 
-        StringBuilder stringBuilder = new StringBuilder("┌───");
-        stringBuilder.append("┬───".repeat(size - 1));
-        stringBuilder.append("┐\n");
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof PositionGomoku o) || deep != o.deep || size != o.size || state != o.state)
+            return false;
+        if (Arrays.equals(board, o.board))
+            return true;
 
-        for (Move move = new Move(); move != null; move = move.next(size)) {
-            stringBuilder.append("│");
-            stringBuilder.append(List.of("   ", " X ", " O ", "Err").get(get(move)));
-            if (move.y == size - 1 && move.x < size - 1)
-                stringBuilder.append(line);
+        int[] other = o.board;
+        int[] mirror = new int[size];
+        int maxIndex = size - 1;
+        for (int i = 0; i < size; i++)
+            mirror[i] = other[maxIndex - i];
+        if (Arrays.equals(board, mirror))
+            return true;
+        
+        for (int i = 0; i < 3; i++) {
+            int[] rotateOther = new int[size];
+            int[] rotateMirror = new int[size];
+            for (Move move = new Move(); move != null; move = move.next(size)) {
+                @SuppressWarnings("SuspiciousNameCombination")
+                Move rotate = new Move(maxIndex - move.y, move.x);
+                set(rotateOther, rotate, get(other, move));
+                set(rotateMirror, rotate, get(mirror, move));
+            }
+            if (Arrays.equals(board, rotateOther) || Arrays.equals(board, rotateMirror))
+                return true;
+            other = rotateOther;
+            mirror = rotateMirror;
         }
-
-        stringBuilder.append("│\n└───");
-        stringBuilder.append("┴───".repeat(size - 1));
-        stringBuilder.append("┘\n");
+        return false;
+    }
+    @Override
+    public String toString() {
+        String[] figures = {". ", "X ", "O ", "Er"};
+        StringBuilder stringBuilder = new StringBuilder();
+        for (Move move = new Move(); move != null; move = move.next(size)) {
+            stringBuilder.append(figures[get(move)]);
+            if (move.y == size - 1 && move.x < size - 1)
+                stringBuilder.append("\n");
+        }
         return stringBuilder.toString();
     }
 }

@@ -17,16 +17,16 @@ public class Game {
 
         while (position.state() == GameState.ONGOING) {
             long startTime = bean.getCurrentThreadCpuTime();
-            Position move = engines.get(plOnTurn).choseMove(position, startTime + TIME_PER_TURN);
+            Object move = engines.get(plOnTurn).choseMove(position.copy(), startTime + TIME_PER_TURN);
             long duration = bean.getCurrentThreadCpuTime() - startTime;
 
             System.out.println("Turn duration: " + duration / 1_000_000.0 + "ms");
             if (duration > TIME_PER_TURN)
                 endGame("Player " + (1 - plOnTurn) + " wins. Time out.");
-            if (!position.getChildren().contains(move))
+            if (!position.moves().contains(move))
                 endGame("Player " + (1 - plOnTurn) + " wins. Illegal move.");
 
-            position = move;
+            position.applyMove(move);
             plOnTurn = 1 - plOnTurn;
             System.out.println(position);
         }

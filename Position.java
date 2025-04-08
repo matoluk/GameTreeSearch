@@ -1,8 +1,9 @@
 import java.util.List;
 
 public interface Position {
-    List<Position> getChildren();
-    boolean advanceToNext();
-    void revertToParent();
+    Position copy();
+    List<Object> moves();
     GameState state();
+    Position applyMove(Object move);
+    void revertMove(Object move);
 }
