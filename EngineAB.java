@@ -7,38 +7,41 @@ import java.util.concurrent.TimeoutException;
 
 public class EngineAB implements Engine{
     private final PositionEvaluator heuristic;
+    private final ABPosition abPosition;
     private long deadline;
     private boolean searchedFullTree;
     private final ThreadMXBean bean = ManagementFactory.getThreadMXBean();
-    EngineAB(PositionEvaluator heuristic) {
+    private int visitedNodes = 0;
+    EngineAB(PositionEvaluator heuristic, ABPosition position) {
         this.heuristic = heuristic;
+        this.abPosition = position;
     }
     @Override
     public Object choseMove(Position position, long deadline) {
         this.deadline = deadline;
-        List<Object> moves = position.moves();
+        abPosition.init(position);
         Object bestMove = null;
 
+        visitedNodes = 0;
         for(int deep = 1; true; deep++) {
             System.out.println("Deep: "+deep);
             searchedFullTree = true;
             double alpha = -1;
             List<Object> bestMoves = new ArrayList<>();
-            for (Object move : moves) {
+            for (abPosition.initIterator(); abPosition.next(deep > 1); abPosition.back(deep > 1)) {
                 try {
-                    position.applyMove(move);
-                    double value = -abSearch(position, deep - 1, -1, -alpha);
+                    double value = -abSearch(deep - 1, -1, -alpha);
                     //TODO - if(value==-1) remove move;  if forced move then return;  if no move ...
-                    position.revertMove(move);
                     if (value == 1)
-                        return move;
+                        return abPosition.getMove();
                     if (value > alpha) {
                         alpha = value;
                         bestMoves.clear();
                     }
                     if (value == alpha)
-                        bestMoves.add(move);
+                        bestMoves.add(abPosition.getMove());
                 } catch (TimeoutException e) {
+                    System.out.println("Nodes: "+ visitedNodes);
                     return bestMove;
                 }
             }
@@ -47,24 +50,25 @@ public class EngineAB implements Engine{
                 return bestMove;
         }
     }
-    private double abSearch(Position position, int deep, double alpha, double beta) throws TimeoutException {
+    private double abSearch(int deep, double alpha, double beta) throws TimeoutException {
+        visitedNodes++;
         if (bean.getCurrentThreadCpuTime() >= deadline)
             throw new TimeoutException();
 
-        if (position.state() == GameState.WIN)
+        GameState state = abPosition.getPosition().state();
+        if (state == GameState.WIN)
             return -1;
-        if (position.state() == GameState.DRAW)
+        if (state == GameState.DRAW)
             return 0;
         if (deep == 0) {
             searchedFullTree = false;
-            return -heuristic.eval(position);
+            return -heuristic.eval(abPosition.getPosition());
         }
 
         double maxValue = -1;
-        for (Object move : position.moves()) {
-            position.applyMove(move);
-            double value = -abSearch(position, deep - 1, -beta, -alpha);
-            position.revertMove(move);
+        while (abPosition.next(deep > 1)) {
+            double value = -abSearch(deep - 1, -beta, -alpha);
+            abPosition.back(deep > 1);
 
             if (value > maxValue) {
                 maxValue = value;
