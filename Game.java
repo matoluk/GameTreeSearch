@@ -11,7 +11,10 @@ public class Game {
         System.exit(0);
     }
     public static void main(String[] args) {
-        List<Engine> engines = List.of(new EngineMCTS(new SimulateGomoku()), new EngineMCTS(new SimulateGomoku()));
+        List<Engine> engines = List.of(
+                new EngineAB(new HeuristicGomoku(), new ABGomokuRelatedMoves()),
+                new EngineAB(new HeuristicGomoku(), new ABGomokuAllMoves())
+        );
         Position position = new PositionGomoku(15);
         int plOnTurn = 0;
 
