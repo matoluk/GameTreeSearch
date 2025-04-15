@@ -1,5 +1,4 @@
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 public class ABGomokuAllMoves implements ABPosition{
     PositionGomoku position;
@@ -70,5 +69,10 @@ public class ABGomokuAllMoves implements ABPosition{
     @Override
     public Position getPosition() {
         return position;
+    }
+
+    @Override
+    public Set<Object> getMoves() {
+        return new HashSet<>(Arrays.asList(this.moves).subList(0, movesCount));
     }
 }

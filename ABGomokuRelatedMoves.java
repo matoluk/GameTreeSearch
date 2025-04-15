@@ -6,15 +6,21 @@ public class ABGomokuRelatedMoves implements ABPosition{
     Stack<PositionGomoku.Move> moveStack;
     Stack<Iterator<PositionGomoku.Move>> iteratorStack;
     Stack<Integer> movesIndexStack;
-    private static final int DISTANCE = 2;
+    int distance;
+    ABGomokuRelatedMoves() {
+        distance = 2;
+    }
+    ABGomokuRelatedMoves(int distance) {
+        this.distance = distance;
+    }
     Set<PositionGomoku.Move> relatedMoves(PositionGomoku.Move move) {
         Set<PositionGomoku.Move> relatedMoves = new HashSet<>();
         PositionGomoku.Move from = new PositionGomoku.Move(
-                Integer.max(0, move.x - DISTANCE),
-                Integer.max(0, move.y - DISTANCE));
+                Integer.max(0, move.x - distance),
+                Integer.max(0, move.y - distance));
         PositionGomoku.Move to = new PositionGomoku.Move(
-                Integer.min(position.size - 1, move.x + DISTANCE),
-                Integer.min(position.size - 1, move.y + DISTANCE));
+                Integer.min(position.size - 1, move.x + distance),
+                Integer.min(position.size - 1, move.y + distance));
         PositionGomoku.Move m = new PositionGomoku.Move(from.x, from.y);
         while(true) {
             if (position.get(m) == 0 && moves.stream().noneMatch(set -> set.contains(m)))
@@ -103,5 +109,10 @@ public class ABGomokuRelatedMoves implements ABPosition{
     @Override
     public Position getPosition() {
         return position;
+    }
+    @Override
+    public Set<Object> getMoves() {
+        assert moveStack.isEmpty();
+        return new HashSet<>(moves.get(0));
     }
 }

@@ -3,6 +3,7 @@ import java.lang.management.ThreadMXBean;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 public class EngineAB implements Engine{
@@ -20,35 +21,47 @@ public class EngineAB implements Engine{
     public Object choseMove(Position position, long deadline) {
         this.deadline = deadline;
         abPosition.init(position);
+        Set<Object> moves = abPosition.getMoves();
         Object bestMove = null;
 
         visitedNodes = 0;
-        for(int deep = 1; true; deep++) {
+        searchedFullTree = false;
+        for(int deep = 1; !searchedFullTree; deep++) {
             System.out.println("Deep: "+deep);
             searchedFullTree = true;
             double alpha = -1;
             List<Object> bestMoves = new ArrayList<>();
-            for (abPosition.initIterator(); abPosition.next(deep > 1); abPosition.back(deep > 1)) {
+            List<Object> losingMoves = new ArrayList<>();
+            for (Object move : moves) {
+                position.applyMove(move);
+                abPosition.init(position);
+                abPosition.initIterator();
+                double value;
                 try {
-                    double value = -abSearch(deep - 1, -1, -alpha);
-                    //TODO - if(value==-1) remove move;  if forced move then return;  if no move ...
-                    if (value == 1)
-                        return abPosition.getMove();
-                    if (value > alpha) {
-                        alpha = value;
-                        bestMoves.clear();
-                    }
-                    if (value == alpha)
-                        bestMoves.add(abPosition.getMove());
+                    value = -abSearch(deep - 1, -1, -alpha);
                 } catch (TimeoutException e) {
                     System.out.println("Nodes: "+ visitedNodes);
                     return bestMove;
                 }
+                position.revertMove(move);
+
+                if (value == 1)
+                    return move;
+                if (value == -1)
+                    losingMoves.add(move);
+                if (value > alpha) {
+                    alpha = value;
+                    bestMoves.clear();
+                }
+                if (value == alpha)
+                    bestMoves.add(move);
             }
             bestMove = bestMoves.get((new Random()).nextInt(bestMoves.size()));
-            if (searchedFullTree)
+            if (moves.size() - losingMoves.size() <= 1)
                 return bestMove;
+            losingMoves.forEach(moves::remove);
         }
+        return bestMove;
     }
     private double abSearch(int deep, double alpha, double beta) throws TimeoutException {
         visitedNodes++;
