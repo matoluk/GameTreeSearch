@@ -7,7 +7,7 @@ public class PositionGomoku implements Position {
     final int[] board;
     int deep;
     GameState state;
-    static class Move {
+    static class Move implements Comparable {
         int x = 0;
         int y = 0;
         Move() {}
@@ -45,6 +45,13 @@ public class PositionGomoku implements Position {
         @Override
         public String toString() {
             return "[" + x + "," + y + "]";
+        }
+
+        @Override
+        public int compareTo(Object o) {
+            if (!(o instanceof Move m))
+                return -1;
+            return 20 * x + y - (20 * m.x + m.y);
         }
     }
     PositionGomoku(int size) {
@@ -167,6 +174,31 @@ public class PositionGomoku implements Position {
         }
         return false;
     }
+    public static int hash(int x) {
+        x ^= (x >>> 16);
+        x *= 0x85ebca6b;
+        x ^= (x >>> 13);
+        x *= 0xc2b2ae35;
+        x ^= (x >>> 16);
+        return x;
+    }
+    @Override
+    public int hashCode() {
+        int hash = 0;
+        for (Move move = new Move(); move != null; move = move.next(size)) {
+            if (get(move) == 0)
+                continue;
+            int x = move.x >= size / 2 ? size - 1 - move.x : move.x;
+            int y = move.y >= size / 2 ? size - 1 - move.y : move.y;
+            int code = Integer.max(x, y);
+            code += size / 2 * (x + y - code) + 1;
+            if (get(move) == 2)
+                code += size * size / 4 + 1;
+            hash += hash(code);
+        }
+        return hash;
+    }
+
     @Override
     public String toString() {
         String[] figures = {". ", "X ", "O ", "Er"};

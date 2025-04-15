@@ -1,6 +1,7 @@
+import java.io.Serializable;
 import java.util.List;
 
-public interface Position {
+public interface Position extends Serializable {
     Position copy();
     List<Object> moves();
     GameState state();
