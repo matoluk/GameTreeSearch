@@ -1,9 +1,5 @@
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 public class EngineAB implements Engine{
@@ -42,6 +38,7 @@ public class EngineAB implements Engine{
                 if (value > -1)
                     safeMoves++;
                 if (value > alpha) {
+                    alpha = value;
                     bestMove = abPosition.getMove();
                     if (value == 1)
                         return bestMove;

@@ -29,6 +29,7 @@ public class ABGomokuSortMoves implements ABPosition{
             if (children == null)
                 return Collections.emptyIterator();
             List<Node> childrenList = new ArrayList<>(children);
+            Collections.shuffle(childrenList);
             childrenList.sort(Comparator.comparingDouble(node -> -node.value));
             return childrenList.iterator();
         }
@@ -101,7 +102,9 @@ public class ABGomokuSortMoves implements ABPosition{
         newMoves.addAll(relatedMoves(move));
         newMoves.remove(move);
         moves.push(newMoves);
-        movesIterators.push(newMoves.iterator());
+        List<PositionGomoku.Move> list = new ArrayList<>(newMoves);
+        Collections.shuffle(list);
+        movesIterators.push(list.iterator());
     }
     @Override
     public boolean next(boolean leaf) {
