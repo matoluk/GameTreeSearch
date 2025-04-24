@@ -12,7 +12,7 @@ public class EngineAB implements Engine{
     private long deadline;
     private boolean searchedFullTree;
     private final ThreadMXBean bean = ManagementFactory.getThreadMXBean();
-    private int visitedNodes = 0;
+    private long visitedNodes = 0;
     EngineAB(PositionEvaluator heuristic, ABPosition position) {
         this.heuristic = heuristic;
         this.abPosition = position;
@@ -21,8 +21,7 @@ public class EngineAB implements Engine{
     public Object choseMove(Position position, long deadline) {
         this.deadline = deadline;
         abPosition.init(position);
-        Set<Object> moves = abPosition.getMoves();
-        Object bestMove = null;
+        Object prevBestMove = null;
 
         visitedNodes = 0;
         searchedFullTree = false;
@@ -30,38 +29,31 @@ public class EngineAB implements Engine{
             System.out.println("Deep: "+deep);
             searchedFullTree = true;
             double alpha = -1;
-            List<Object> bestMoves = new ArrayList<>();
-            List<Object> losingMoves = new ArrayList<>();
-            for (Object move : moves) {
-                position.applyMove(move);
-                abPosition.init(position);
-                abPosition.initIterator();
-                double value;
+            Object bestMove = null;
+            double value;
+            int safeMoves = 0;
+            for (abPosition.initIterator(); abPosition.next(deep == 1); abPosition.back(deep == 1, value)) {
                 try {
                     value = -abSearch(deep - 1, -1, -alpha);
                 } catch (TimeoutException e) {
                     System.out.println("Nodes: "+ visitedNodes);
-                    return bestMove;
+                    return prevBestMove;
                 }
-                position.revertMove(move);
-
-                if (value == 1)
-                    return move;
-                if (value == -1)
-                    losingMoves.add(move);
+                if (value > -1)
+                    safeMoves++;
                 if (value > alpha) {
-                    alpha = value;
-                    bestMoves.clear();
+                    bestMove = abPosition.getMove();
+                    if (value == 1)
+                        return bestMove;
                 }
-                if (value == alpha)
-                    bestMoves.add(move);
             }
-            bestMove = bestMoves.get((new Random()).nextInt(bestMoves.size()));
-            if (moves.size() - losingMoves.size() <= 1)
+            if (safeMoves == 1)
                 return bestMove;
-            losingMoves.forEach(moves::remove);
+            if (bestMove == null)
+                return prevBestMove;
+            prevBestMove = bestMove;
         }
-        return bestMove;
+        return prevBestMove;
     }
     private double abSearch(int deep, double alpha, double beta) throws TimeoutException {
         visitedNodes++;
@@ -79,15 +71,15 @@ public class EngineAB implements Engine{
         }
 
         double maxValue = -1;
-        while (abPosition.next(deep > 1)) {
+        while (abPosition.next(deep == 1)) {
             double value = -abSearch(deep - 1, -beta, -alpha);
-            abPosition.back(deep > 1);
+            abPosition.back(deep == 1, value);
 
             if (value > maxValue) {
                 maxValue = value;
                 if (value > alpha) {
                     alpha = value;
-                    if (value > beta) // or >= and choose first best move
+                    if (value >= beta)
                         return value;
                 }
             }

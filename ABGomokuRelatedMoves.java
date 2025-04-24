@@ -55,7 +55,7 @@ public class ABGomokuRelatedMoves implements ABPosition{
     }
 
     @Override
-    public boolean next(boolean updatePossibleMoves) {
+    public boolean next(boolean leaf) {
         Iterator<PositionGomoku.Move> it = iteratorStack.peek();
         while (!it.hasNext()) {
             int movesIndex = movesIndexStack.pop() + 1;
@@ -69,26 +69,26 @@ public class ABGomokuRelatedMoves implements ABPosition{
 
         PositionGomoku.Move move = it.next();
         if (moveStack.contains(move))
-            return next(updatePossibleMoves);
+            return next(leaf);
 
         position.applyMove(move);
         moveStack.push(move);
-        iteratorStack.push(moves.get(0).iterator());
-        movesIndexStack.push(0);
-
-        if (updatePossibleMoves)
+        if (!leaf) {
+            iteratorStack.push(moves.get(0).iterator());
+            movesIndexStack.push(0);
             moves.add(relatedMoves(move));
+        }
         return true;
     }
 
     @Override
-    public void back(boolean updatePossibleMoves) {
-        iteratorStack.pop();
-        movesIndexStack.pop();
+    public void back(boolean leaf, double value) {
         position.revertMove(moveStack.pop());
-
-        if (updatePossibleMoves)
+        if (!leaf) {
+            iteratorStack.pop();
+            movesIndexStack.pop();
             moves.remove(moves.size() - 1);
+        }
     }
     @Override
     public void initIterator() {
@@ -110,9 +110,11 @@ public class ABGomokuRelatedMoves implements ABPosition{
     public Position getPosition() {
         return position;
     }
+    /*
     @Override
     public Set<Object> getMoves() {
         assert moveStack.isEmpty();
         return new HashSet<>(moves.get(0));
     }
+    */
 }

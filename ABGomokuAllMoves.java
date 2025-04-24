@@ -21,16 +21,15 @@ public class ABGomokuAllMoves implements ABPosition{
     }
 
     @Override
-    public boolean next(boolean updatePossibleMoves) {
+    public boolean next(boolean leaf) {
         int index = moveIndexStack.peek();
         if (index >= movesCount)
             return false;
         PositionGomoku.Move move = moves[index];
         position.applyMove(move);
         moveStack.push(move);
-        moveIndexStack.push(0);
-
-        if (updatePossibleMoves) {
+        if (!leaf) {
+            moveIndexStack.push(0);
             movesCount--;
             moves[index] = moves[movesCount];
         }
@@ -38,14 +37,15 @@ public class ABGomokuAllMoves implements ABPosition{
     }
 
     @Override
-    public void back(boolean updatePossibleMoves) {
-        moveIndexStack.pop();
+    public void back(boolean leaf, double value) {
+        if (!leaf)
+            moveIndexStack.pop();
         int index = moveIndexStack.pop();
         PositionGomoku.Move move = moveStack.pop();
         position.revertMove(move);
         moveIndexStack.push(index + 1);
 
-        if (updatePossibleMoves) {
+        if (!leaf) {
             moves[movesCount] = moves[index];
             moves[index] = move;
             movesCount++;
@@ -71,8 +71,10 @@ public class ABGomokuAllMoves implements ABPosition{
         return position;
     }
 
+    /*
     @Override
     public Set<Object> getMoves() {
         return new HashSet<>(Arrays.asList(this.moves).subList(0, movesCount));
     }
+    */
 }

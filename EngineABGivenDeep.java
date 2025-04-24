@@ -1,49 +1,43 @@
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 public class EngineABGivenDeep{
     private final PositionEvaluator heuristic;
     private final ABPosition abPosition;
+    private long visitedNodes;
+    private long allVisitedNodes;
     EngineABGivenDeep(PositionEvaluator heuristic, ABPosition position) {
         this.heuristic = heuristic;
         this.abPosition = position;
     }
     public List<Object> choseMove(Position position, int deep) {
         abPosition.init(position);
-        Set<Object> moves = abPosition.getMoves();
+        visitedNodes = 0;
 
-        List<Object> bestMoves = new ArrayList<>();
-        for (int d = 1; d <= deep; d++) {
+        for(int d = 1; true; d++) {
+            System.out.println("Deep: " + d);
             double alpha = -1;
-            bestMoves.clear();
-            List<Object> losingMoves = new ArrayList<>();
-            boolean win = false;
-            for (Object move : moves) {
-                position.applyMove(move);
-                abPosition.init(position);
-                abPosition.initIterator();
-                double value = -abSearch(d - 1, -1, -alpha);
-                position.revertMove(move);
-
-                if (value == 1)
-                    win = true;
-                if (value == -1)
-                    losingMoves.add(move);
+            List<Object> bestMoves = new ArrayList<>();
+            double value = 0;
+            for (abPosition.initIterator(); abPosition.next(d == 1); abPosition.back(d == 1, value)) {
+                value = -abSearch(d - 1, -1, -alpha);
                 if (value > alpha) {
                     alpha = value;
                     bestMoves.clear();
                 }
                 if (value == alpha && value > -1)
-                    bestMoves.add(move);
+                    bestMoves.add(abPosition.getMove());
             }
-            if (win || moves.size() - losingMoves.size() <= 1)
+            if (value == 1 || d == deep) {
+                allVisitedNodes += visitedNodes;
+                System.out.println("Visited nodes: " + visitedNodes);
+                System.out.println("All Visited nodes: " + allVisitedNodes);
                 return bestMoves;
-            losingMoves.forEach(moves::remove);
+            }
         }
-        return bestMoves;
     }
     private double abSearch(int deep, double alpha, double beta) {
+        visitedNodes++;
         GameState state = abPosition.getPosition().state();
         if (state == GameState.WIN)
             return -1;
@@ -53,9 +47,9 @@ public class EngineABGivenDeep{
             return -heuristic.eval(abPosition.getPosition());
 
         double maxValue = -1;
-        while (abPosition.next(deep > 1)) {
+        while (abPosition.next(deep == 1)) {
             double value = -abSearch(deep - 1, -beta, -alpha);
-            abPosition.back(deep > 1);
+            abPosition.back(deep == 1, value);
 
             if (value > maxValue) {
                 maxValue = value;
