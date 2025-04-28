@@ -18,6 +18,7 @@ public class ABGomokuSortMoves implements ABPosition{
         double value;
         Node parent;
         HashSet<Node> children;
+        int order;
         Node(PositionGomoku.Move move) {
             this.move = move;
         }
@@ -29,8 +30,9 @@ public class ABGomokuSortMoves implements ABPosition{
             if (children == null)
                 return Collections.emptyIterator();
             List<Node> childrenList = new ArrayList<>(children);
-            Collections.shuffle(childrenList);
-            childrenList.sort(Comparator.comparingDouble(node -> -node.value));
+            childrenList.sort(Comparator
+                    .comparingDouble((Node node) -> -node.value)
+                    .thenComparingInt(node -> node.order));
             return childrenList.iterator();
         }
 
@@ -94,6 +96,7 @@ public class ABGomokuSortMoves implements ABPosition{
         if (node.children == null)
             node.children = new HashSet<>();
         node.children.add(child);
+        child.order = node.order;
         node = child;
     }
     private void updateMoves(PositionGomoku.Move move) {
@@ -120,6 +123,7 @@ public class ABGomokuSortMoves implements ABPosition{
         if (childrenIterators.peek().hasNext()) {
             Node child = childrenIterators.peek().next();
             position.applyMove(child.move);
+            child.order = node.order;
             node = child;
             updateMoves(node.move);
             return true;
@@ -139,6 +143,7 @@ public class ABGomokuSortMoves implements ABPosition{
     public void back(boolean leaf, double value) {
         node.value = value;
         position.revertMove(node.move);
+        node.parent.order = node.order + 1;
         node = node.parent;
         if (leaf)
             return;
@@ -153,6 +158,7 @@ public class ABGomokuSortMoves implements ABPosition{
         childrenIterators.push(node.sortIterate());
         movesIterators = new Stack<>();
         movesIterators.push(moves.peek().iterator());
+        node.order = 0;
     }
 
     @Override

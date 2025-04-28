@@ -33,6 +33,8 @@ public class EngineAB implements Engine{
                     value = -abSearch(deep - 1, -1, -alpha);
                 } catch (TimeoutException e) {
                     System.out.println("Nodes: "+ visitedNodes);
+                    if (bestMove != null && abPosition instanceof ABGomokuSortMoves)
+                        return bestMove;
                     return prevBestMove;
                 }
                 if (value > -1)
@@ -40,6 +42,7 @@ public class EngineAB implements Engine{
                 if (value > alpha) {
                     alpha = value;
                     bestMove = abPosition.getMove();
+                    System.out.println("BestMove: " + bestMove + " value: " + value);
                     if (value == 1)
                         return bestMove;
                 }

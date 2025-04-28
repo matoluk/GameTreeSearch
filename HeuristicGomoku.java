@@ -15,12 +15,19 @@ public class HeuristicGomoku implements PositionEvaluator{
     private static final int __two___ = 5;
     private static final int two___ = 1; // 1
     private static final int one = 0; // 1
+    private final int startPoints;
+    HeuristicGomoku() {
+        startPoints = 0;
+    }
+    HeuristicGomoku(int startPoints) {
+        this.startPoints = startPoints;
+    }
     @Override
     public double eval(Position position) {
         if (!(position instanceof PositionGomoku pos))
             throw new IllegalArgumentException();
 
-        int[] points = {0, 0};
+        int[] points = {startPoints, startPoints};
         List<Line> lines = getLines(pos.board, pos.size);
         for (Line line : lines) {
             if (line.value == 0)
