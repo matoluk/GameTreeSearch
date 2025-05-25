@@ -1,9 +1,9 @@
 import java.util.*;
 
 public class PositionBreakthrough implements Position {
-    private final int size;
+    final int size;
     @SuppressWarnings("unchecked")
-    final TreeSet<Integer>[] pieces = new TreeSet[2];
+    final Set<Integer>[] pieces = new HashSet[2]; //Hash or Tree ?
     int actualPlayer;
     GameState state;
     static class Move {
@@ -22,11 +22,21 @@ public class PositionBreakthrough implements Position {
                 return false;
             return from == o.from && to == o.to && takes == o.takes;
         }
+
+        @Override
+        public int hashCode() {
+            return from + 127 * to;
+        }
+
+        @Override
+        public String toString() {
+            return "["+from/8+","+from%8+"]->["+to/8+","+to%8+"]";
+        }
     }
     PositionBreakthrough(int size) {
         this.size = size;
-        pieces[0] = new TreeSet<>();
-        pieces[1] = new TreeSet<>();
+        pieces[0] = new HashSet<>();
+        pieces[1] = new HashSet<>();
 
         int lastRow = size * (size - 1);
         int rowBefore = lastRow - size;
@@ -42,8 +52,8 @@ public class PositionBreakthrough implements Position {
     }
     PositionBreakthrough(PositionBreakthrough pos) {
         size = pos.size;
-        pieces[0] = new TreeSet<>(pos.pieces[0]);
-        pieces[1] = new TreeSet<>(pos.pieces[1]);
+        pieces[0] = new HashSet<>(pos.pieces[0]);
+        pieces[1] = new HashSet<>(pos.pieces[1]);
         actualPlayer = pos.actualPlayer;
         state = pos.state;
     }
@@ -84,7 +94,7 @@ public class PositionBreakthrough implements Position {
         actualPlayer = 1 - actualPlayer;
         if (m.takes)
             pieces[actualPlayer].remove(m.to);
-        if (m.to < size || m.to >= (size * (size - 1)))
+        if (m.to < size || m.to >= (size * (size - 1)) || pieces[actualPlayer].isEmpty())
             state = GameState.WIN;
         return this;
     }
