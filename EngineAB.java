@@ -8,7 +8,7 @@ public class EngineAB implements Engine{
     private long deadline;
     private boolean searchedFullTree;
     private final ThreadMXBean bean = ManagementFactory.getThreadMXBean();
-    private long visitedNodes = 0;
+    long visitedNodes = 0;
     EngineAB(PositionEvaluator heuristic, ABPosition position) {
         this.heuristic = heuristic;
         this.abPosition = position;
@@ -17,12 +17,17 @@ public class EngineAB implements Engine{
     public Object choseMove(Position position, long deadline) {
         this.deadline = deadline;
         abPosition.init(position);
+        Object move = choseMove();
+        abPosition.clear();
+        return move;
+    }
+    public Object choseMove() {
         Object prevBestMove = null;
 
-        visitedNodes = 0;
+        //visitedNodes = 0;
         searchedFullTree = false;
         for(int deep = 1; !searchedFullTree; deep++) {
-            System.out.println("Deep: "+deep);
+            //System.out.println("Deep: "+deep);
             searchedFullTree = true;
             double alpha = -1;
             Object bestMove = null;
@@ -32,8 +37,8 @@ public class EngineAB implements Engine{
                 try {
                     value = -abSearch(deep - 1, -1, -alpha);
                 } catch (TimeoutException e) {
-                    System.out.println("Nodes: "+ visitedNodes);
-                    if (bestMove != null && abPosition instanceof ABGomokuSortMoves)
+                    //System.out.println("Nodes: "+ visitedNodes);
+                    if (bestMove != null && (abPosition instanceof ABGomokuSortMoves || abPosition instanceof ABBreakthrough))
                         return bestMove;
                     return prevBestMove;
                 }
@@ -42,7 +47,7 @@ public class EngineAB implements Engine{
                 if (value > alpha) {
                     alpha = value;
                     bestMove = abPosition.getMove();
-                    System.out.println("BestMove: " + bestMove + " value: " + value);
+                    //System.out.println("BestMove: " + bestMove + " value: " + value);
                     if (value == 1)
                         return bestMove;
                 }

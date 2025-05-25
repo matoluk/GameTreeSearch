@@ -13,7 +13,15 @@ public class ABGomokuSortMoves implements ABPosition{
     ABGomokuSortMoves(int distance) {
         this.distance = distance;
     }
-    class Node {
+    @Override
+    public void clear() {
+        position = null;
+        node = null;
+        moves = null;
+        movesIterators = null;
+        childrenIterators = null;
+    }
+    static class Node {
         PositionGomoku.Move move;
         double value;
         Node parent;
@@ -59,7 +67,7 @@ public class ABGomokuSortMoves implements ABPosition{
                 Integer.min(position.size - 1, move.y + distance));
         PositionGomoku.Move m = new PositionGomoku.Move(from.x, from.y);
         while(true) {
-            if (position.get(m) == 0 && !moves.contains(m))
+            if (position.get(m) == 0 /*&& !moves.peek().contains(m)*/)
                 relatedMoves.add(new PositionGomoku.Move(m.x, m.y));
             m.x++;
             if (m.x > to.x) {

@@ -13,6 +13,14 @@ public class ABGomokuRelatedMoves implements ABPosition{
     ABGomokuRelatedMoves(int distance) {
         this.distance = distance;
     }
+    @Override
+    public void clear() {
+        position = null;
+        moves = null;
+        moveStack = null;
+        iteratorStack = null;
+        movesIndexStack = null;
+    }
     Set<PositionGomoku.Move> relatedMoves(PositionGomoku.Move move) {
         Set<PositionGomoku.Move> relatedMoves = new HashSet<>();
         PositionGomoku.Move from = new PositionGomoku.Move(

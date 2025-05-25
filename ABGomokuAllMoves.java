@@ -7,6 +7,13 @@ public class ABGomokuAllMoves implements ABPosition{
     Stack<PositionGomoku.Move> moveStack;
     Stack<Integer> moveIndexStack;
     @Override
+    public void clear() {
+        position = null;
+        moves = null;
+        moveStack = null;
+        moveIndexStack = null;
+    }
+    @Override
     public void init(Position pos) {
         if (!(pos instanceof PositionGomoku))
             throw new IllegalArgumentException("Expected PositionGomoku");
