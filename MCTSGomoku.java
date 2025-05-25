@@ -10,12 +10,15 @@ public class MCTSGomoku implements MCTSPosition{
     int[] movesEval;
     IntUnaryOperator f;
     int maxSimulationLength;
+    long sim = 0;
     int distance;
     private static final Random rand = new Random();
-    private static final byte[] BIT_COUNT_5BIT = new byte[32];
+    private static final byte[] BIT_COUNT_POW2_5BIT = new byte[32];
     static {
-        for (int i = 0; i < 32; i++)
-            BIT_COUNT_5BIT[i] = (byte) Integer.bitCount(i);
+        for (int i = 0; i < 32; i++) {
+            int x = Integer.bitCount(i);
+            BIT_COUNT_POW2_5BIT[i] = (byte) (x * x);
+        }
     }
     MCTSGomoku(IntUnaryOperator function, int maxSimulationLength) {
         distance = 2;
@@ -78,7 +81,7 @@ public class MCTSGomoku implements MCTSPosition{
                         emptyFrom = cursor;
                     }
                     if (cursor == 5) {
-                        points += BIT_COUNT_5BIT[state];
+                        points += BIT_COUNT_POW2_5BIT[state];
                         cursor--;
                         if (emptyFrom > 0)
                             emptyFrom--;
@@ -247,19 +250,19 @@ public class MCTSGomoku implements MCTSPosition{
         updatePriority(indexOf(m), 0);
     }
 
-    void add(int i, Collection<Object> moves) {
+    void add(int i, Map<Object, Double> moves) {
         if (movesPriority[i] == 0)
             return;
         if (2 * i + 1 >= movesPriority.length)
-            moves.add(moveAt(i));
+            moves.put(moveAt(i), movesPriority[i] / (double) Integer.MAX_VALUE);
         else {
             add(2 * i + 1, moves);
             add(2 * i + 2, moves);
         }
     }
     @Override
-    public Collection<Object> getMoves() {
-        Collection<Object> moves = new ArrayList<>();
+    public Map<Object, Double> getEvaluatedMoves() {
+        Map<Object, Double> moves = new HashMap<>();
         add(0, moves);
         return moves;
     }
@@ -278,11 +281,11 @@ public class MCTSGomoku implements MCTSPosition{
                 }
             }
             applyMove(moveAt(i));
+            sim++;
         }
-        int result = 0;
         if (position.state == GameState.WIN)
-            result = 1 - (simStep & 1) * 2;
-        return result;
+            return  1 - (simStep & 1) * 2;
+        return 0;
     }
 
     @Override

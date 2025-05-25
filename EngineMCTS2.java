@@ -1,11 +1,13 @@
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
+import java.security.KeyPair;
 import java.util.*;
 
 public class EngineMCTS2 implements Engine{
     private static final double EXPLORATION_PARAM = 1;
     private static final Random rand = new Random();
-    private final MCTSPosition mctsPosition;
+    final MCTSPosition mctsPosition;
+    long count = 0;
     EngineMCTS2(MCTSPosition pos) {
         mctsPosition = pos;
     }
@@ -14,7 +16,6 @@ public class EngineMCTS2 implements Engine{
         mctsPosition.init(position);
         Node root = new Node(null, null);
         ThreadMXBean bean = ManagementFactory.getThreadMXBean();
-        int count = 0;
         while (bean.getCurrentThreadCpuTime() < deadline) {
             mctsPosition.init();
             Node node = selectNode(root);
@@ -25,7 +26,7 @@ public class EngineMCTS2 implements Engine{
                         node = node.parent.parent;
                     return node.move;
                 }
-                if (result == -1)
+                if (result == -1 || root.children.size() == 1)
                     return root.getBestMove();
                 backPropagate(node, 1);
             }
@@ -33,7 +34,6 @@ public class EngineMCTS2 implements Engine{
                 backPropagate(node, mctsPosition.simulate());
             count++;
         }
-        System.out.println("Simulations: " + count);
         return root.getBestMove();
     }
 
@@ -60,6 +60,14 @@ public class EngineMCTS2 implements Engine{
             result = -result;
         }
     }
+    private void backPropagate(Node node, double result, int visits) {
+        while (node != null) {
+            node.visits -= visits;
+            node.wins += result;
+            node = node.parent;
+            result = -result;
+        }
+    }
     private class Node {
         Node parent;
         Object move;
@@ -71,11 +79,16 @@ public class EngineMCTS2 implements Engine{
             this.parent = parent;
             this.move = move;
         }
+        Node(Node parent, Object move, double moveScore) {
+            this.parent = parent;
+            this.move = move;
+            wins = moveScore;
+        }
 
         void expand() {
             if (mctsPosition.getPosition().state() == GameState.ONGOING)
-                for (Object move : mctsPosition.getMoves())
-                    children.add(new Node(this, move));
+                for (Map.Entry<Object, Double> entry : mctsPosition.getEvaluatedMoves().entrySet())
+                    children.add(new Node(this, entry.getKey(), entry.getValue()));
         }
 
         Node selectBestChild() {
@@ -100,6 +113,7 @@ public class EngineMCTS2 implements Engine{
             int size = nodes.size();
             if (size > 1) {
                 int index = nodes.indexOf(parent);
+                backPropagate(parent.parent, parent.wins - 1, parent.visits + 1);
                 size--;
                 nodes.set(index, nodes.get(size));
                 nodes.remove(size);
